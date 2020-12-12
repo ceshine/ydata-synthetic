@@ -9,6 +9,7 @@ from tensorflow.keras.layers import Input, Dense, Dropout
 from tensorflow.keras import Model
 from tensorflow.keras.optimizers import Adam
 
+
 class VanilllaGAN(gan.Model):
 
     def __init__(self, model_parameters):
@@ -16,7 +17,8 @@ class VanilllaGAN(gan.Model):
 
     def define_gan(self):
         self.generator = Generator(self.batch_size).\
-            build_model(input_shape=(self.noise_dim,), dim=self.layers_dim, data_dim=self.data_dim)
+            build_model(input_shape=(self.noise_dim,),
+                        dim=self.layers_dim, data_dim=self.data_dim)
 
         self.discriminator = Discriminator(self.batch_size).\
             build_model(input_shape=(self.data_dim,), dim=self.layers_dim)
@@ -53,8 +55,11 @@ class VanilllaGAN(gan.Model):
         stop_i = start_i + batch_size
         shuffle_seed = (batch_size * seed) // len(train)
         np.random.seed(shuffle_seed)
-        train_ix = np.random.choice(list(train.index), replace=False, size=len(train))  # wasteful to shuffle every time
-        train_ix = list(train_ix) + list(train_ix)  # duplicate to cover ranges past the end of the set
+        # wasteful to shuffle every time
+        train_ix = np.random.choice(
+            list(train.index), replace=False, size=len(train))
+        # duplicate to cover ranges past the end of the set
+        train_ix = list(train_ix) + list(train_ix)
         x = train.loc[train_ix[start_i: stop_i]].values
         return np.reshape(x, (batch_size, -1))
 
@@ -65,7 +70,7 @@ class VanilllaGAN(gan.Model):
         valid = np.ones((self.batch_size, 1))
         fake = np.zeros((self.batch_size, 1))
 
-        for epoch in range(epochs):    
+        for epoch in range(epochs):
             # ---------------------
             #  Train Discriminator
             # ---------------------
@@ -85,22 +90,26 @@ class VanilllaGAN(gan.Model):
             # ---------------------
             noise = tf.random.normal((self.batch_size, self.noise_dim))
             # Train the generator (to have the discriminator label samples as valid)
-            g_loss = self.generator.train_on_batch(noise, valid)
+            g_loss = self._model.train_on_batch(noise, valid)
 
             # Plot the progress
-            print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100 * d_loss[1], g_loss))
+            print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" %
+                  (epoch, d_loss[0], 100 * d_loss[1], g_loss))
 
             # If at save interval => save generated events
             if epoch % sample_interval == 0:
-                #Test here data generation step
+                # Test here data generation step
                 # save model checkpoints
                 if path.exists('./cache') is False:
                     os.mkdir('./cache')
-                model_checkpoint_base_name = './cache/' + cache_prefix + '_{}_model_weights_step_{}.h5'
-                self.generator.save_weights(model_checkpoint_base_name.format('generator', epoch))
-                self.discriminator.save_weights(model_checkpoint_base_name.format('discriminator', epoch))
+                model_checkpoint_base_name = './cache/' + \
+                    cache_prefix + '_{}_model_weights_step_{}.h5'
+                self.generator.save_weights(
+                    model_checkpoint_base_name.format('generator', epoch))
+                self.discriminator.save_weights(
+                    model_checkpoint_base_name.format('discriminator', epoch))
 
-                #Here is generating the data
+                # Here is generating the data
                 z = tf.random.normal((432, self.noise_dim))
                 gen_data = self.generator(z)
                 print('generated_data')
@@ -119,21 +128,23 @@ class VanilllaGAN(gan.Model):
         self.generator = self.generator.load_weights(path)
         return self.generator
 
+
 class Generator(tf.keras.Model):
     def __init__(self, batch_size):
-        self.batch_size=batch_size
+        self.batch_size = batch_size
 
     def build_model(self, input_shape, dim, data_dim):
-        input= Input(shape=input_shape, batch_size=self.batch_size)
+        input = Input(shape=input_shape, batch_size=self.batch_size)
         x = Dense(dim, activation='relu')(input)
         x = Dense(dim * 2, activation='relu')(x)
         x = Dense(dim * 4, activation='relu')(x)
         x = Dense(data_dim)(x)
         return Model(inputs=input, outputs=x)
 
+
 class Discriminator(tf.keras.Model):
-    def __init__(self,batch_size):
-        self.batch_size=batch_size
+    def __init__(self, batch_size):
+        self.batch_size = batch_size
 
     def build_model(self, input_shape, dim):
         input = Input(shape=input_shape, batch_size=self.batch_size)

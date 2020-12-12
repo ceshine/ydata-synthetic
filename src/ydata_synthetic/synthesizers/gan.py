@@ -5,6 +5,7 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow.python import keras
 
+
 class Model():
     def __init__(
             self,
@@ -16,7 +17,7 @@ class Model():
         self.define_gan()
 
     def __call__(self, inputs, **kwargs):
-        return self.generator(inputs=inputs, **kwargs)
+        return self._model(inputs=inputs, **kwargs)
 
     def define_gan(self):
         raise NotImplementedError
@@ -41,7 +42,8 @@ class Model():
         data = []
         for step in tqdm.trange(steps):
             z = tf.random.uniform([self.batch_size, self.noise_dim])
-            records = tf.make_ndarray(tf.make_tensor_proto(self.generator(z, training=False)))
+            records = tf.make_ndarray(tf.make_tensor_proto(
+                self.generator(z, training=False)))
             data.append(pd.DataFrame(records))
         return pd.concat(data)
 

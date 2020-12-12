@@ -11,8 +11,10 @@ import tensorflow.keras.backend as K
 from tensorflow.keras import Model
 from tensorflow.keras.optimizers import Adam
 
-#Auxiliary Keras backend class to calculate the Random Weighted average
-#https://stackoverflow.com/questions/58133430/how-to-substitute-keras-layers-merge-merge-in-tensorflow-keras
+# Auxiliary Keras backend class to calculate the Random Weighted average
+# https://stackoverflow.com/questions/58133430/how-to-substitute-keras-layers-merge-merge-in-tensorflow-keras
+
+
 class RandomWeightedAverage(tf.keras.layers.Layer):
     def __init__(self, batch_size):
         super().__init__()
@@ -24,6 +26,7 @@ class RandomWeightedAverage(tf.keras.layers.Layer):
 
     def compute_output_shape(self, input_shape):
         return input_shape[0]
+
 
 class WGAN(gan.Model):
 
@@ -38,18 +41,20 @@ class WGAN(gan.Model):
 
     def define_gan(self):
         self.generator = Generator(self.batch_size). \
-            build_model(input_shape=(self.noise_dim,), dim=self.layers_dim, data_dim=self.data_dim)
+            build_model(input_shape=(self.noise_dim,),
+                        dim=self.layers_dim, data_dim=self.data_dim)
 
         self.critic = Critic(self.batch_size). \
             build_model(input_shape=(self.data_dim,), dim=self.layers_dim)
 
         optimizer = Adam(self.lr, beta_1=self.beta_1, beta_2=self.beta_2)
-        self.critic_optimizer = Adam(self.lr, beta_1=self.beta_1, beta_2=self.beta_2)
+        self.critic_optimizer = Adam(
+            self.lr, beta_1=self.beta_1, beta_2=self.beta_2)
 
         # Build and compile the critic
         self.critic.compile(loss=self.wasserstein_loss,
-                                   optimizer=self.critic_optimizer,
-                                   metrics=['accuracy'])
+                            optimizer=self.critic_optimizer,
+                            metrics=['accuracy'])
 
         # The generator takes noise as input and generates imgs
         z = Input(shape=(self.noise_dim,))
@@ -62,7 +67,7 @@ class WGAN(gan.Model):
 
         # The combined model  (stacked generator and discriminator)
         # Trains the generator to fool the discriminator
-        #For the WGAN model use the Wassertein loss
+        # For the WGAN model use the Wassertein loss
         self._model = Model(z, validity)
         self._model.compile(loss=self.wasserstein_loss, optimizer=optimizer)
 
@@ -74,16 +79,20 @@ class WGAN(gan.Model):
         stop_i = start_i + batch_size
         shuffle_seed = (batch_size * seed) // len(train)
         np.random.seed(shuffle_seed)
-        train_ix = np.random.choice(list(train.index), replace=False, size=len(train))  # wasteful to shuffle every time
-        train_ix = list(train_ix) + list(train_ix)  # duplicate to cover ranges past the end of the set
+        # wasteful to shuffle every time
+        train_ix = np.random.choice(
+            list(train.index), replace=False, size=len(train))
+        # duplicate to cover ranges past the end of the set
+        train_ix = list(train_ix) + list(train_ix)
         x = train.loc[train_ix[start_i: stop_i]].values
         return np.reshape(x, (batch_size, -1))
 
     def train(self, data, train_arguments):
         [cache_prefix, epochs, sample_interval] = train_arguments
 
-        #Create a summary file
-        train_summary_writer = tf.summary.create_file_writer(path.join('.', 'summaries', 'train'))
+        # Create a summary file
+        train_summary_writer = tf.summary.create_file_writer(
+            path.join('.', 'summaries', 'train'))
 
         # Adversarial ground truths
         valid = np.ones((self.batch_size, 1))
@@ -109,7 +118,8 @@ class WGAN(gan.Model):
 
                     for l in self.critic.layers:
                         weights = l.get_weights()
-                        weights = [np.clip(w, -self.clip_value, self.clip_value) for w in weights]
+                        weights = [
+                            np.clip(w, -self.clip_value, self.clip_value) for w in weights]
                         l.set_weights(weights)
 
                 # ---------------------
@@ -117,19 +127,23 @@ class WGAN(gan.Model):
                 # ---------------------
                 noise = tf.random.normal((self.batch_size, self.noise_dim))
                 # Train the generator (to have the critic label samples as valid)
-                g_loss = self.generator.train_on_batch(noise, valid)
+                g_loss = self._model.train_on_batch(noise, valid)
                 # Plot the progress
-                print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100 * d_loss[1], g_loss))
+                print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" %
+                      (epoch, d_loss[0], 100 * d_loss[1], g_loss))
 
-                #If at save interval => save generated events
+                # If at save interval => save generated events
                 if epoch % sample_interval == 0:
                     # Test here data generation step
                     # save model checkpoints
                     if path.exists('./cache') is False:
                         os.mkdir('./cache')
-                    model_checkpoint_base_name = './cache/' + cache_prefix + '_{}_model_weights_step_{}.h5'
-                    self.generator.save_weights(model_checkpoint_base_name.format('generator', epoch))
-                    self.critic.save_weights(model_checkpoint_base_name.format('critic', epoch))
+                    model_checkpoint_base_name = './cache/' + \
+                        cache_prefix + '_{}_model_weights_step_{}.h5'
+                    self.generator.save_weights(
+                        model_checkpoint_base_name.format('generator', epoch))
+                    self.critic.save_weights(
+                        model_checkpoint_base_name.format('critic', epoch))
 
     def load(self, path):
         assert os.path.isdir(path) == True, \
@@ -150,6 +164,7 @@ class Generator(tf.keras.Model):
         x = Dense(dim * 4, activation='relu')(x)
         x = Dense(data_dim)(x)
         return Model(inputs=input, outputs=x)
+
 
 class Critic(tf.keras.Model):
     def __init__(self, batch_size):
