@@ -16,7 +16,7 @@ class Model():
         self.define_gan()
 
     def __call__(self, inputs, **kwargs):
-        return self.model(inputs=inputs, **kwargs)
+        return self.generator(inputs=inputs, **kwargs)
 
     def define_gan(self):
         raise NotImplementedError
